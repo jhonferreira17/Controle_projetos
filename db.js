@@ -135,6 +135,24 @@ class LabDB {
     if (!localStorage.getItem(DB_KEYS.PROJECTS)) {
       localStorage.setItem(DB_KEYS.PROJECTS, JSON.stringify(INITIAL_PROJECTS));
     }
+    // Remove automaticamente se o e-mail jonata.barbosa@maues.edu.br estiver cadastrado
+    this.removeUserByEmail('jonata.barbosa@maues.edu.br');
+  }
+
+  removeUserByEmail(email) {
+    let users = this.getUsers();
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (user) {
+      users = users.filter(u => u.email.toLowerCase() !== email.toLowerCase());
+      localStorage.setItem(DB_KEYS.USERS, JSON.stringify(users));
+    }
+
+    let projects = JSON.parse(localStorage.getItem(DB_KEYS.PROJECTS) || '[]');
+    const hasProject = projects.some(p => p.studentEmail && p.studentEmail.toLowerCase() === email.toLowerCase());
+    if (hasProject) {
+      projects = projects.filter(p => !p.studentEmail || p.studentEmail.toLowerCase() !== email.toLowerCase());
+      localStorage.setItem(DB_KEYS.PROJECTS, JSON.stringify(projects));
+    }
   }
 
   getUsers() {

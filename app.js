@@ -625,9 +625,12 @@ function renderAdminProjectsGrid(projects) {
         </div>
       </div>
 
-      <div class="admin-card-footer">
-        <button class="btn btn-primary btn-sm" style="width:100%; justify-content:center;" onclick="openAdminProjectDetailModal(${p.id})">
-          <i class="fa-solid fa-clipboard-check"></i> Ver Detalhes e Avaliar
+      <div class="admin-card-footer flex-gap">
+        <button class="btn btn-primary btn-sm" style="flex:1; justify-content:center;" onclick="openAdminProjectDetailModal(${p.id})">
+          <i class="fa-solid fa-clipboard-check"></i> Detalhes & Avaliar
+        </button>
+        <button class="btn btn-outline btn-sm" style="color:var(--accent-rose); border-color:rgba(244,63,94,0.3);" title="Excluir Aluno e Projeto" onclick="deleteStudentProject('${p.studentEmail}')">
+          <i class="fa-solid fa-trash"></i>
         </button>
       </div>
     `;
@@ -635,6 +638,13 @@ function renderAdminProjectsGrid(projects) {
     container.appendChild(card);
   });
 }
+
+window.deleteStudentProject = function(email) {
+  if (!confirm(`Deseja realmente excluir a conta e o projeto do aluno (${email})?`)) return;
+  db.removeUserByEmail(email);
+  renderAdminView();
+  alert(`Aluno (${email}) removido do sistema com sucesso!`);
+};
 
 window.openAdminProjectDetailModal = function(projectId) {
   activeSelectedAdminProjectId = projectId;
