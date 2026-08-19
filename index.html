@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LabProj - Gestão de Projetos PIBIC & PIBITI</title>
+  <meta name="description" content="Plataforma de gestão e acompanhamento de projetos de Iniciação Científica (PIBIC) e Tecnológica (PIBITI) para alunos e orientadores do laboratório.">
+  
+  <!-- Fontes Google: Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body class="theme-dark">
+
+  <!-- ========================================== -->
+  <!-- TELA DE AUTENTICAÇÃO (LOGIN & CADASTRO)    -->
+  <!-- ========================================== -->
+  <div id="auth-overlay" class="auth-overlay">
+    <div class="auth-card glass-card">
+      <div class="auth-header">
+        <div class="brand-icon">
+          <i class="fa-solid fa-atom"></i>
+        </div>
+        <h2>LabProj <span class="badge-lab">PIBIC / PIBITI</span></h2>
+        <p>Sistema do Laboratório de Pesquisa & Desenvolvimento</p>
+      </div>
+
+      <!-- Auth Tabs -->
+      <div class="auth-tabs">
+        <button id="tab-login" class="auth-tab-btn active" onclick="switchAuthTab('login')">
+          <i class="fa-solid fa-right-to-bracket"></i> Entrar
+        </button>
+        <button id="tab-register" class="auth-tab-btn" onclick="switchAuthTab('register')">
+          <i class="fa-solid fa-user-plus"></i> Criar Conta
+        </button>
+      </div>
+
+      <!-- FORMULÁRIO DE LOGIN -->
+      <form id="form-login" class="auth-form active" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="login-email"><i class="fa-solid fa-envelope"></i> E-mail Institucional</label>
+          <input type="email" id="login-email" required placeholder="seu.email@lab.uf.br" value="lucas.ferreira@lab.uf.br">
+        </div>
+
+        <div class="form-group">
+          <label for="login-password"><i class="fa-solid fa-lock"></i> Senha</label>
+          <input type="password" id="login-password" required placeholder="••••••••" value="123">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-auth">
+          <i class="fa-solid fa-right-to-bracket"></i> Entrar no Sistema
+        </button>
+
+        <div class="demo-logins">
+          <span class="demo-title">Ou acesse rapidamente como:</span>
+          <div class="demo-btns-row">
+            <button type="button" class="btn btn-xs btn-outline" onclick="fillDemoLogin('lucas.ferreira@lab.uf.br')">
+              <i class="fa-solid fa-user-graduate"></i> Aluno Demo
+            </button>
+            <button type="button" class="btn btn-xs btn-outline" onclick="fillDemoLogin('prof.carlos@lab.uf.br')">
+              <i class="fa-solid fa-user-tie"></i> Orientador Demo
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- FORMULÁRIO DE CADASTRO -->
+      <form id="form-register" class="auth-form" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label for="reg-role"><i class="fa-solid fa-user-gear"></i> Tipo de Conta</label>
+          <select id="reg-role" required onchange="toggleRegFields()">
+            <option value="aluno">Aluno (Pesquisador PIBIC/PIBITI)</option>
+            <option value="admin">Orientador (Administrador do Lab)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="reg-name"><i class="fa-solid fa-user"></i> Nome Completo *</label>
+          <input type="text" id="reg-name" required placeholder="Ex: Mariana Silva">
+        </div>
+
+        <div class="form-group">
+          <label for="reg-email"><i class="fa-solid fa-envelope"></i> E-mail Institucional *</label>
+          <input type="email" id="reg-email" required placeholder="mariana.silva@lab.uf.br">
+        </div>
+
+        <div class="form-group">
+          <label for="reg-password"><i class="fa-solid fa-lock"></i> Criar Senha *</label>
+          <input type="password" id="reg-password" required placeholder="Mínimo 6 caracteres">
+        </div>
+
+        <div class="form-group" id="reg-group-lattes">
+          <label for="reg-lattes"><i class="fa-solid fa-link"></i> Link do Currículo Lattes</label>
+          <input type="url" id="reg-lattes" placeholder="http://lattes.cnpq.br/...">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-auth">
+          <i class="fa-solid fa-user-check"></i> Concluir Cadastro
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- APP HEADER -->
+  <header class="app-header">
+    <div class="header-container container">
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-atom"></i>
+        </div>
+        <div class="brand-text">
+          <h1>LabProj <span class="badge-lab">PIBIC / PIBITI</span></h1>
+          <p>Laboratório de Pesquisa & Desenvolvimento</p>
+        </div>
+      </div>
+
+      <!-- Control Panel & Role Switcher -->
+      <div class="header-controls">
+        <div class="role-switcher-container" id="role-switcher-wrapper">
+          <span class="role-label"><i class="fa-solid fa-user-gear"></i> Modo:</span>
+          <div class="role-switcher">
+            <button id="btn-role-aluno" class="role-btn active" onclick="switchRole('aluno')">
+              <i class="fa-solid fa-graduation-cap"></i> Aluno
+            </button>
+            <button id="btn-role-admin" class="role-btn" onclick="switchRole('admin')">
+              <i class="fa-solid fa-user-shield"></i> Orientador (Admin)
+            </button>
+          </div>
+        </div>
+
+        <div class="user-pill" id="user-pill-info">
+          <img src="" alt="Avatar" id="user-avatar" class="user-avatar">
+          <div class="user-details">
+            <span class="user-name" id="user-name">Carregando...</span>
+            <span class="user-role" id="user-role-badge">---</span>
+          </div>
+          <button class="btn-logout" title="Sair da Conta" onclick="handleLogout()">
+            <i class="fa-solid fa-power-off"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content container">
+
+    <!-- ========================================== -->
+    <!-- VISÃO DO ALUNO                             -->
+    <!-- ========================================== -->
+    <section id="view-aluno" class="view-section active">
+      <div class="welcome-banner glass-card">
+        <div class="banner-info">
+          <h2><i class="fa-solid fa-rocket"></i> Espaço do Pesquisador</h2>
+          <p>Gerencie as informações do seu projeto PIBIC/PIBITI, mantenha seu cronograma atualizado e envie seus relatórios acadêmicos.</p>
+        </div>
+        <div class="banner-actions">
+          <button class="btn btn-primary" onclick="openEditProjectModal()">
+            <i class="fa-solid fa-pen-to-square"></i> Editar Dados do Projeto
+          </button>
+        </div>
+      </div>
+
+      <div class="grid-layout grid-2col">
+        <!-- Card 1: Detalhes do Projeto -->
+        <div class="glass-card project-summary-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-microscope"></i> Meu Projeto de Pesquisa</h3>
+            <span class="badge badge-modalidade" id="aluno-badge-modalidade">PIBIC</span>
+          </div>
+          <div class="card-body">
+            <h4 class="project-title" id="aluno-proj-titulo">Título do Projeto</h4>
+            
+            <div class="project-meta-grid">
+              <div class="meta-item">
+                <span class="meta-label"><i class="fa-solid fa-id-badge"></i> Vínculo:</span>
+                <span class="meta-value" id="aluno-proj-cota"><span class="badge badge-bolsista">Bolsista</span></span>
+              </div>
+              <div class="meta-item">
+                <span class="meta-label"><i class="fa-solid fa-link"></i> Currículo Lattes:</span>
+                <span class="meta-value">
+                  <a href="#" target="_blank" id="aluno-proj-lattes" class="lattes-link">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Visualizar Lattes
+                  </a>
+                </span>
+              </div>
+              <div class="meta-item full-width">
+                <span class="meta-label"><i class="fa-solid fa-user-group"></i> Colaboradores Adicionais:</span>
+                <span class="meta-value" id="aluno-proj-colaboradores">Nenhum</span>
+              </div>
+            </div>
+
+            <div class="project-description-box">
+              <span class="meta-label"><i class="fa-solid fa-align-left"></i> Resumo do Projeto:</span>
+              <p id="aluno-proj-resumo">Nenhum resumo cadastrado.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Status dos Relatórios (PDF & Word & Link) -->
+        <div class="glass-card reports-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-file-contract"></i> Entregas de Relatórios</h3>
+          </div>
+          <div class="card-body reports-container">
+            <!-- Relatório Parcial -->
+            <div class="report-box" id="box-relatorio-parcial">
+              <div class="report-box-header">
+                <div>
+                  <h4>Relatório Parcial</h4>
+                  <span class="report-deadline"><i class="fa-regular fa-calendar"></i> Prazo: Mês 6 do Projeto</span>
+                </div>
+                <span class="badge badge-status" id="aluno-status-parcial">Aprovado</span>
+              </div>
+              <div class="report-box-content">
+                <p class="report-desc" id="aluno-desc-parcial">Relatório com os avanços dos primeiros 6 meses.</p>
+
+                <!-- Document File Attachment Pill -->
+                <div class="attached-file-pill" id="aluno-file-pill-parcial">
+                  <i class="fa-solid fa-file-pdf file-icon" id="aluno-file-icon-parcial"></i>
+                  <span class="file-name" id="aluno-file-name-parcial">Relatorio.pdf</span>
+                  <button class="btn btn-xs btn-primary" id="aluno-file-btn-parcial" onclick="downloadOrViewFile('parcial')">
+                    <i class="fa-solid fa-download"></i> Baixar / Abrir
+                  </button>
+                </div>
+
+                <div class="report-feedback-box" id="feedback-parcial-container">
+                  <strong><i class="fa-solid fa-comment-dots"></i> Parecer do Orientador:</strong>
+                  <p id="aluno-feedback-parcial">Nenhum parecer emitido ainda.</p>
+                </div>
+              </div>
+              <div class="report-box-footer">
+                <a href="#" target="_blank" class="btn btn-sm btn-outline" id="aluno-link-parcial"><i class="fa-solid fa-external-link"></i> Abrir Link Externo</a>
+                <button class="btn btn-sm btn-secondary" onclick="openSubmitReportModal('parcial')">
+                  <i class="fa-solid fa-upload"></i> Enviar / Atualizar
+                </button>
+              </div>
+            </div>
+
+            <!-- Relatório Final -->
+            <div class="report-box" id="box-relatorio-final">
+              <div class="report-box-header">
+                <div>
+                  <h4>Relatório Final</h4>
+                  <span class="report-deadline"><i class="fa-regular fa-calendar"></i> Prazo: Mês 12 do Projeto</span>
+                </div>
+                <span class="badge badge-status-pending" id="aluno-status-final">Em Análise</span>
+              </div>
+              <div class="report-box-content">
+                <p class="report-desc" id="aluno-desc-final">Documento completo consolidando todos os resultados.</p>
+
+                <!-- Document File Attachment Pill -->
+                <div class="attached-file-pill" id="aluno-file-pill-final">
+                  <i class="fa-solid fa-file-word file-icon" id="aluno-file-icon-final"></i>
+                  <span class="file-name" id="aluno-file-name-final">Relatorio_Final.docx</span>
+                  <button class="btn btn-xs btn-primary" id="aluno-file-btn-final" onclick="downloadOrViewFile('final')">
+                    <i class="fa-solid fa-download"></i> Baixar / Abrir
+                  </button>
+                </div>
+
+                <div class="report-feedback-box" id="feedback-final-container">
+                  <strong><i class="fa-solid fa-comment-dots"></i> Parecer do Orientador:</strong>
+                  <p id="aluno-feedback-final">Aguardando avaliação final pelo orientador.</p>
+                </div>
+              </div>
+              <div class="report-box-footer">
+                <a href="#" target="_blank" class="btn btn-sm btn-outline" id="aluno-link-final"><i class="fa-solid fa-external-link"></i> Abrir Link Externo</a>
+                <button class="btn btn-sm btn-primary" onclick="openSubmitReportModal('final')">
+                  <i class="fa-solid fa-upload"></i> Enviar Relatório Final
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Cronograma de Atividades do Aluno -->
+      <div class="glass-card timeline-card">
+        <div class="card-header flex-between">
+          <div>
+            <h3><i class="fa-solid fa-list-check"></i> Cronograma de Atividades do Projeto</h3>
+            <p class="section-subtitle">Monitore as etapas da sua pesquisa e atualize o progresso das suas entregas.</p>
+          </div>
+          <button class="btn btn-secondary" onclick="openAddStepModal()">
+            <i class="fa-solid fa-plus"></i> Adicionar Nova Etapa
+          </button>
+        </div>
+
+        <div class="timeline-progress-bar-container">
+          <div class="progress-info">
+            <span>Progresso Geral do Cronograma:</span>
+            <strong id="aluno-progress-percent">0% Concluído</strong>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="aluno-progress-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="custom-table" id="table-cronograma-aluno">
+            <thead>
+              <tr>
+                <th>Etapa / Atividade</th>
+                <th>Período (Meses)</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-cronograma-aluno">
+              <!-- Renderizado via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- VISÃO DO ADMINISTRADOR (ORIENTADOR)        -->
+    <!-- ========================================== -->
+    <section id="view-admin" class="view-section">
+      <div class="welcome-banner admin-banner glass-card">
+        <div class="banner-info">
+          <h2><i class="fa-solid fa-user-shield"></i> Painel do Orientador & Administração</h2>
+          <p>Visão consolidada dos projetos PIBIC/PIBITI do laboratório. Acompanhe os relatórios, arquivos PDF/Word e cronogramas de todos os orientandos.</p>
+        </div>
+      </div>
+
+      <!-- Metrics Stats Cards -->
+      <div class="stats-grid">
+        <div class="stat-card glass-card">
+          <div class="stat-icon icon-blue"><i class="fa-solid fa-folder-open"></i></div>
+          <div class="stat-data">
+            <span class="stat-number" id="stat-total-projetos">0</span>
+            <span class="stat-label">Projetos Submetidos</span>
+          </div>
+        </div>
+        <div class="stat-card glass-card">
+          <div class="stat-icon icon-purple"><i class="fa-solid fa-award"></i></div>
+          <div class="stat-data">
+            <span class="stat-number" id="stat-total-bolsistas">0 / 0</span>
+            <span class="stat-label">Bolsistas vs. Voluntários</span>
+          </div>
+        </div>
+        <div class="stat-card glass-card">
+          <div class="stat-icon icon-cyan"><i class="fa-solid fa-microscope"></i></div>
+          <div class="stat-data">
+            <span class="stat-number" id="stat-total-modalidades">0 PIBIC / 0 PIBITI</span>
+            <span class="stat-label">Projetos por Modalidade</span>
+          </div>
+        </div>
+        <div class="stat-card glass-card">
+          <div class="stat-icon icon-amber"><i class="fa-solid fa-clock-rotate-left"></i></div>
+          <div class="stat-data">
+            <span class="stat-number" id="stat-relatorios-pendentes">0</span>
+            <span class="stat-label">Relatórios a Avaliar</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters & Search Bar -->
+      <div class="glass-card filter-card">
+        <div class="filter-grid">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="search-input" placeholder="Buscar por aluno, título do projeto..." oninput="filterAdminProjects()">
+          </div>
+
+          <div class="filter-group">
+            <label><i class="fa-solid fa-filter"></i> Modalidade:</label>
+            <select id="filter-modalidade" onchange="filterAdminProjects()">
+              <option value="todos">Todas (PIBIC & PIBITI)</option>
+              <option value="PIBIC">PIBIC (Científica)</option>
+              <option value="PIBITI">PIBITI (Tecnológica)</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label><i class="fa-solid fa-coins"></i> Cota:</label>
+            <select id="filter-cota" onchange="filterAdminProjects()">
+              <option value="todos">Todas (Bolsista & Voluntário)</option>
+              <option value="bolsista">Bolsistas</option>
+              <option value="voluntario">Voluntários</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label><i class="fa-solid fa-file-circle-check"></i> Status Relatórios:</label>
+            <select id="filter-relatorio" onchange="filterAdminProjects()">
+              <option value="todos">Todos os Status</option>
+              <option value="pendente">Pendente de Avaliação</option>
+              <option value="aprovado">Todos Aprovados</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Projects Grid -->
+      <div class="projects-grid" id="admin-projects-container">
+        <!-- Renderizado dinamicamente -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAIS DE INTERAÇÃO                        -->
+  <!-- ========================================== -->
+
+  <!-- Modal 1: Editar Projeto -->
+  <div class="modal-overlay" id="modal-edit-project">
+    <div class="modal-card glass-modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-pen-to-square"></i> Dados do Projeto de Pesquisa</h3>
+        <button class="modal-close" onclick="closeModal('modal-edit-project')">&times;</button>
+      </div>
+      <form id="form-edit-project" onsubmit="saveProjectForm(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="form-titulo">Título do Projeto *</label>
+            <input type="text" id="form-titulo" required placeholder="Ex: Estudo da eficiência de painéis solares...">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="form-modalidade">Modalidade do Programa *</label>
+              <select id="form-modalidade" required>
+                <option value="PIBIC">PIBIC - Iniciação Científica</option>
+                <option value="PIBITI">PIBITI - Iniciação Tecnológica</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="form-cota-tipo">Vínculo / Cota *</label>
+              <select id="form-cota-tipo" required onchange="toggleFormAgencia()">
+                <option value="bolsista">Aluno Bolsista</option>
+                <option value="voluntario">Aluno Voluntário</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" id="group-agencia">
+            <label for="form-agencia">Órgão de Fomento / Agência de Bolsa</label>
+            <input type="text" id="form-agencia" placeholder="Ex: CNPq, FAPESP, CAPES, Edital Interno...">
+          </div>
+
+          <div class="form-group">
+            <label for="form-lattes">Link do Currículo Lattes (URL) *</label>
+            <input type="url" id="form-lattes" required placeholder="http://lattes.cnpq.br/1234567890123456">
+          </div>
+
+          <div class="form-group">
+            <label for="form-colaboradores">Possui Colaboradores no Projeto?</label>
+            <input type="text" id="form-colaboradores" placeholder="Informe nomes de co-orientadores ou pesquisadores parceiros.">
+          </div>
+
+          <div class="form-group">
+            <label for="form-resumo">Resumo / Proposta da Pesquisa *</label>
+            <textarea id="form-resumo" rows="5" required placeholder="Descreva os objetivos, metodologia e resultados esperados do projeto..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modal-edit-project')">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Adicionar / Editar Etapa no Cronograma -->
+  <div class="modal-overlay" id="modal-cronograma-step">
+    <div class="modal-card glass-modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-list-check"></i> Etapa do Cronograma</h3>
+        <button class="modal-close" onclick="closeModal('modal-cronograma-step')">&times;</button>
+      </div>
+      <form id="form-cronograma-step" onsubmit="saveCronogramaStep(event)">
+        <input type="hidden" id="step-id-hidden">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="step-nome">Descrição da Atividade / Etapa *</label>
+            <input type="text" id="step-nome" required placeholder="Ex: Revisão bibliográfica e estado da arte">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="step-mes-inicio">Mês de Início *</label>
+              <select id="step-mes-inicio" required>
+                <option value="Mês 1">Mês 1</option>
+                <option value="Mês 2">Mês 2</option>
+                <option value="Mês 3">Mês 3</option>
+                <option value="Mês 4">Mês 4</option>
+                <option value="Mês 5">Mês 5</option>
+                <option value="Mês 6">Mês 6</option>
+                <option value="Mês 7">Mês 7</option>
+                <option value="Mês 8">Mês 8</option>
+                <option value="Mês 9">Mês 9</option>
+                <option value="Mês 10">Mês 10</option>
+                <option value="Mês 11">Mês 11</option>
+                <option value="Mês 12">Mês 12</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="step-mes-fim">Mês de Término *</label>
+              <select id="step-mes-fim" required>
+                <option value="Mês 1">Mês 1</option>
+                <option value="Mês 2">Mês 2</option>
+                <option value="Mês 3">Mês 3</option>
+                <option value="Mês 4">Mês 4</option>
+                <option value="Mês 5">Mês 5</option>
+                <option value="Mês 6">Mês 6</option>
+                <option value="Mês 7">Mês 7</option>
+                <option value="Mês 8">Mês 8</option>
+                <option value="Mês 9">Mês 9</option>
+                <option value="Mês 10">Mês 10</option>
+                <option value="Mês 11">Mês 11</option>
+                <option value="Mês 12">Mês 12</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="step-status">Status Atual da Etapa *</label>
+            <select id="step-status" required>
+              <option value="Pendente">Pendente</option>
+              <option value="Em Andamento">Em Andamento</option>
+              <option value="Concluído">Concluído</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modal-cronograma-step')">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Salvar Etapa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Submeter Relatório (Upload Arquivo PDF/Word OU Link) -->
+  <div class="modal-overlay" id="modal-submit-report">
+    <div class="modal-card glass-modal">
+      <div class="modal-header">
+        <h3 id="modal-submit-report-title"><i class="fa-solid fa-file-upload"></i> Submeter Relatório</h3>
+        <button class="modal-close" onclick="closeModal('modal-submit-report')">&times;</button>
+      </div>
+      <form id="form-submit-report" onsubmit="saveReportSubmission(event)">
+        <input type="hidden" id="report-type-hidden">
+        
+        <div class="modal-body">
+          <!-- Selection Method -->
+          <div class="form-group">
+            <label><i class="fa-solid fa-paperclip"></i> Forma de Envio do Documento</label>
+            <div class="upload-method-selector">
+              <label class="radio-option">
+                <input type="radio" name="uploadMethod" value="file" checked onchange="toggleUploadMethod()">
+                <span><i class="fa-solid fa-file-arrow-up"></i> Upload de Arquivo (PDF / Word)</span>
+              </label>
+              <label class="radio-option">
+                <input type="radio" name="uploadMethod" value="link" onchange="toggleUploadMethod()">
+                <span><i class="fa-solid fa-link"></i> Link Externo (Google Drive)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Option A: File Upload -->
+          <div class="form-group" id="group-upload-file">
+            <label for="report-file-input">Selecionar Arquivo (.pdf, .doc, .docx) *</label>
+            <div class="file-drop-zone" id="file-drop-zone">
+              <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+              <p>Arraste e solte o arquivo aqui ou <strong>Clique para Selecionar</strong></p>
+              <span class="file-formats-help">Formatos aceitos: PDF (.pdf) ou Word (.doc, .docx)</span>
+              <input type="file" id="report-file-input" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="handleFileSelect(event)">
+            </div>
+            <div id="file-selected-preview" class="file-preview-pill" style="display: none;">
+              <i class="fa-solid fa-file-lines" id="preview-file-icon"></i>
+              <span id="preview-file-name">arquivo.pdf</span>
+              <button type="button" class="btn-remove-file" onclick="removeSelectedFile()">&times;</button>
+            </div>
+          </div>
+
+          <!-- Option B: Link URL -->
+          <div class="form-group" id="group-upload-link" style="display: none;">
+            <label for="report-link">Link do Arquivo (Google Drive, Dropbox, PDF) *</label>
+            <input type="url" id="report-link" placeholder="https://drive.google.com/file/d/...">
+          </div>
+
+          <div class="form-group">
+            <label for="report-observacoes">Mensagem ou Observações ao Orientador</label>
+            <textarea id="report-observacoes" rows="3" placeholder="Insira notas relevantes sobre esta versão do relatório..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modal-submit-report')">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane"></i> Submeter Relatório</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Visão Detalhada do Projeto e Avaliação (Admin / Orientador) -->
+  <div class="modal-overlay" id="modal-admin-project-detail">
+    <div class="modal-card glass-modal modal-large">
+      <div class="modal-header">
+        <div>
+          <span class="badge badge-modalidade" id="admin-modal-modalidade">PIBIC</span>
+          <h3 id="admin-modal-student-name">Projeto de Lucas Ferreira</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('modal-admin-project-detail')">&times;</button>
+      </div>
+
+      <div class="modal-body admin-detail-body">
+        <div class="admin-detail-header-info">
+          <h4 id="admin-modal-project-title">Título do Projeto</h4>
+          <div class="detail-tags-row">
+            <span class="badge" id="admin-modal-cota">Bolsista CNPq</span>
+            <a href="#" target="_blank" id="admin-modal-lattes-btn" class="btn btn-xs btn-outline">
+              <i class="fa-solid fa-id-card"></i> Abrir Lattes do Aluno
+            </a>
+          </div>
+        </div>
+
+        <!-- Seção: Resumo & Colaboradores -->
+        <div class="admin-detail-section">
+          <h5><i class="fa-solid fa-file-text"></i> Resumo e Informações do Projeto</h5>
+          <p id="admin-modal-resumo" class="admin-resumo-text"></p>
+          <div class="collaborators-box">
+            <strong><i class="fa-solid fa-user-group"></i> Colaboradores:</strong>
+            <span id="admin-modal-colaboradores">Nenhum registrado.</span>
+          </div>
+        </div>
+
+        <!-- Seção: Cronograma de Atividades -->
+        <div class="admin-detail-section">
+          <div class="flex-between">
+            <h5><i class="fa-solid fa-tasks"></i> Cronograma do Aluno</h5>
+            <span class="badge badge-outline" id="admin-modal-progress-badge">Progresso: 0%</span>
+          </div>
+          
+          <div class="table-responsive">
+            <table class="custom-table table-sm">
+              <thead>
+                <tr>
+                  <th>Etapa / Atividade</th>
+                  <th>Período</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="admin-modal-tbody-cronograma">
+                <!-- Renderizado dinamicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Seção: Avaliação de Relatórios Parcial e Final -->
+        <div class="admin-detail-section">
+          <h5><i class="fa-solid fa-clipboard-check"></i> Avaliação de Relatórios e Arquivos</h5>
+          
+          <div class="admin-reports-evaluation-grid">
+            <!-- Relatório Parcial Admin -->
+            <div class="evaluation-card glass-card">
+              <div class="eval-header">
+                <h6>Relatório Parcial</h6>
+                <span class="badge" id="admin-eval-status-parcial">Enviado</span>
+              </div>
+              <div class="eval-body">
+                <!-- Container para Arquivo Baixável / Link -->
+                <div class="eval-doc-link" id="admin-eval-doc-parcial-container">
+                  <!-- Renderizado via JS -->
+                </div>
+                <div class="form-group">
+                  <label for="admin-parecer-parcial">Parecer / Feedback do Orientador:</label>
+                  <textarea id="admin-parecer-parcial" rows="3" placeholder="Digite seu feedback para o aluno..."></textarea>
+                </div>
+              </div>
+              <div class="eval-footer flex-gap">
+                <button class="btn btn-sm btn-success" onclick="evaluateReport('parcial', 'Aprovado')"><i class="fa-solid fa-check"></i> Aprovar</button>
+                <button class="btn btn-sm btn-warning" onclick="evaluateReport('parcial', 'Ajustes Solicitados')"><i class="fa-solid fa-triangle-exclamation"></i> Pedir Ajustes</button>
+              </div>
+            </div>
+
+            <!-- Relatório Final Admin -->
+            <div class="evaluation-card glass-card">
+              <div class="eval-header">
+                <h6>Relatório Final</h6>
+                <span class="badge" id="admin-eval-status-final">Em Análise</span>
+              </div>
+              <div class="eval-body">
+                <div class="eval-doc-link" id="admin-eval-doc-final-container">
+                  <!-- Renderizado via JS -->
+                </div>
+                <div class="form-group">
+                  <label for="admin-parecer-final">Parecer / Feedback do Orientador:</label>
+                  <textarea id="admin-parecer-final" rows="3" placeholder="Digite seu feedback final para o aluno..."></textarea>
+                </div>
+              </div>
+              <div class="eval-footer flex-gap">
+                <button class="btn btn-sm btn-success" onclick="evaluateReport('final', 'Aprovado')"><i class="fa-solid fa-check"></i> Aprovar Final</button>
+                <button class="btn btn-sm btn-warning" onclick="evaluateReport('final', 'Ajustes Solicitados')"><i class="fa-solid fa-triangle-exclamation"></i> Pedir Ajustes</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('modal-admin-project-detail')">Fechar Visão do Projeto</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
