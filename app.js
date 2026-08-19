@@ -1,6 +1,6 @@
 /* ==========================================================================
    LABPROJ - LÓGICA DA APLICAÇÃO (SPA)
-   Autenticação, Gestão de Perfis, Sincronização DB & Relatórios PDF/Word
+   Integração Assíncrona com API REST Backend & Vercel Serverless DB
    ========================================================================== */
 
 import { db } from './db.js';
@@ -18,17 +18,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ==========================================================================
-   AUTENTICAÇÃO & CONTROLE DE SESSÃO
+   AUTENTICAÇÃO & SESSÃO
    ========================================================================== */
 
-function checkSession() {
+async function checkSession() {
   const session = db.getSession();
   const authOverlay = document.getElementById('auth-overlay');
 
   if (session) {
     currentUser = session;
     authOverlay.classList.add('hidden');
-    loadUserDataAndProjects();
+    await loadUserDataAndProjects();
   } else {
     currentUser = null;
     authOverlay.classList.remove('hidden');
@@ -59,23 +59,21 @@ window.fillDemoLogin = function(email) {
   document.getElementById('login-password').value = '123';
 };
 
-window.handleLogin = function(e) {
+window.handleLogin = async function(e) {
   e.preventDefault();
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
 
-  const user = db.findUserByEmail(email);
-
-  if (!user || user.password !== password) {
-    alert('E-mail ou senha incorretos. Utilize os botões de demonstração se preferir.');
-    return;
+  try {
+    const user = await db.login(email, password);
+    db.setSession(user);
+    await checkSession();
+  } catch (err) {
+    alert(err.message || 'E-mail ou senha incorretos.');
   }
-
-  db.setSession(user);
-  checkSession();
 };
 
-window.handleRegister = function(e) {
+window.handleRegister = async function(e) {
   e.preventDefault();
   const role = document.getElementById('reg-role').value;
   const name = document.getElementById('reg-name').value.trim();
@@ -83,54 +81,14 @@ window.handleRegister = function(e) {
   const password = document.getElementById('reg-password').value;
   const lattesUrl = document.getElementById('reg-lattes').value.trim() || 'http://lattes.cnpq.br/';
 
-  if (db.findUserByEmail(email)) {
-    alert('Este e-mail já está cadastrado no sistema.');
-    return;
+  try {
+    const newUser = await db.register({ name, email, password, role, lattesUrl });
+    db.setSession(newUser);
+    await checkSession();
+    alert('Conta criada com sucesso e projeto cadastrado no banco de dados!');
+  } catch (err) {
+    alert(err.message || 'Erro ao realizar cadastro.');
   }
-
-  const newUser = {
-    id: `user_${Date.now()}`,
-    name,
-    email,
-    password,
-    role,
-    avatar: role === 'admin' 
-      ? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150' 
-      : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
-    lattesUrl
-  };
-
-  db.saveUser(newUser);
-
-  // Se for aluno, registra o projeto no banco imediatamente
-  if (role === 'aluno') {
-    const newProj = {
-      id: Date.now(),
-      studentId: newUser.id,
-      studentName: newUser.name,
-      studentEmail: newUser.email,
-      studentAvatar: newUser.avatar,
-      title: `Projeto de Pesquisa - ${newUser.name}`,
-      modalidade: 'PIBIC',
-      cota: 'bolsista',
-      agencia: 'CNPq',
-      lattesUrl: newUser.lattesUrl,
-      collaborators: '',
-      resumo: 'Resumo da pesquisa pendente de preenchimento pelo aluno.',
-      cronograma: [
-        { id: Date.now() + 1, atividade: 'Revisão Bibliográfica e Estado da Arte', mesInicio: 'Mês 1', mesFim: 'Mês 2', status: 'Pendente' }
-      ],
-      relatorios: {
-        parcial: { status: 'Não Enviado', link: '', fileName: '', fileData: '', fileType: '', feedback: '', dataEntrega: '' },
-        final: { status: 'Não Enviado', link: '', fileName: '', fileData: '', fileType: '', feedback: '', dataEntrega: '' }
-      }
-    };
-    db.saveOrUpdateProject(newProj);
-  }
-
-  db.setSession(newUser);
-  checkSession();
-  alert('Conta criada com sucesso!');
 };
 
 window.handleLogout = function() {
@@ -146,13 +104,12 @@ window.toggleRegFields = function() {
 };
 
 /* ==========================================================================
-   CARREGAMENTO DE DADOS & SEPARAÇÃO DE PERFIS
+   CARREGAMENTO DE DADOS & VISÕES
    ========================================================================== */
 
-function loadUserDataAndProjects() {
-  allProjects = db.getProjects();
+async function loadUserDataAndProjects() {
+  allProjects = await db.getProjects();
 
-  // Atualiza identificação do usuário logado
   document.getElementById('user-name').textContent = currentUser.name;
   document.getElementById('user-role-badge').textContent = currentUser.role === 'admin' ? 'Orientador Principal (Admin)' : 'Aluno Pesquisador';
   document.getElementById('user-avatar').src = currentUser.avatar;
@@ -161,23 +118,21 @@ function loadUserDataAndProjects() {
   const viewAdmin = document.getElementById('view-admin');
 
   if (currentUser.role === 'admin') {
-    // VISÃO EXCLUSIVA DO ORIENTADOR (ADMIN)
     viewAdmin.classList.add('active');
     viewAluno.classList.remove('active');
 
-    renderAdminView();
+    await renderAdminView();
   } else {
-    // VISÃO EXCLUSIVA DO ALUNO
     viewAluno.classList.add('active');
     viewAdmin.classList.remove('active');
 
-    currentProject = db.getProjectByStudentId(currentUser.id, currentUser.email) || allProjects[0];
+    currentProject = allProjects.find(p => p.studentId === currentUser.id || (p.studentEmail && p.studentEmail.toLowerCase() === currentUser.email.toLowerCase())) || allProjects[0];
     renderAlunoView();
   }
 }
 
 /* ==========================================================================
-   VISÃO DO ALUNO & GESTÃO DO PROJETO
+   VISÃO DO ALUNO
    ========================================================================== */
 
 function renderAlunoView() {
@@ -201,11 +156,9 @@ function renderAlunoView() {
 
   document.getElementById('aluno-proj-resumo').textContent = currentProject.resumo;
 
-  // Render Relatórios
   renderAlunoReportBox('parcial');
   renderAlunoReportBox('final');
 
-  // Render Cronograma
   renderAlunoCronograma();
 }
 
@@ -228,7 +181,6 @@ function renderAlunoReportBox(type) {
     feedbackContainer.style.display = 'none';
   }
 
-  // Link Externo
   if (rep.link) {
     linkBtn.style.display = 'inline-flex';
     linkBtn.href = rep.link;
@@ -236,7 +188,6 @@ function renderAlunoReportBox(type) {
     linkBtn.style.display = 'none';
   }
 
-  // Arquivo Físico Anexado (PDF / Word)
   if (rep.fileName || rep.fileData) {
     filePill.style.display = 'flex';
     document.getElementById(`aluno-file-name-${type}`).textContent = rep.fileName || 'Relatorio_Anexado';
@@ -355,7 +306,7 @@ window.removeSelectedFile = function() {
   document.getElementById('file-selected-preview').style.display = 'none';
 };
 
-window.saveReportSubmission = function(e) {
+window.saveReportSubmission = async function(e) {
   e.preventDefault();
   const type = document.getElementById('report-type-hidden').value;
   const method = document.querySelector('input[name="uploadMethod"]:checked').value;
@@ -368,7 +319,7 @@ window.saveReportSubmission = function(e) {
 
   if (method === 'link') {
     rep.link = document.getElementById('report-link').value;
-    finishReportSave(type);
+    await finishReportSave(type);
   } else {
     if (!tempSelectedFile && !rep.fileData) {
       alert('Por favor, selecione um arquivo no formato PDF ou Word (.doc, .docx).');
@@ -377,22 +328,22 @@ window.saveReportSubmission = function(e) {
 
     if (tempSelectedFile) {
       const reader = new FileReader();
-      reader.onload = function(evt) {
+      reader.onload = async function(evt) {
         rep.fileName = tempSelectedFile.name;
         rep.fileType = tempSelectedFile.type;
         rep.fileData = evt.target.result;
-        finishReportSave(type);
+        await finishReportSave(type);
       };
       reader.readAsDataURL(tempSelectedFile);
     } else {
-      finishReportSave(type);
+      await finishReportSave(type);
     }
   }
 };
 
-function finishReportSave(type) {
-  db.saveOrUpdateProject(currentProject);
-  allProjects = db.getProjects();
+async function finishReportSave(type) {
+  await db.saveOrUpdateProject(currentProject);
+  allProjects = await db.getProjects();
   renderAlunoView();
   closeModal('modal-submit-report');
   alert(`Relatório ${type === 'parcial' ? 'Parcial' : 'Final'} submetido com sucesso!`);
@@ -439,7 +390,7 @@ window.toggleFormAgencia = function() {
   document.getElementById('group-agencia').style.display = cotaVal === 'bolsista' ? 'flex' : 'none';
 };
 
-window.saveProjectForm = function(e) {
+window.saveProjectForm = async function(e) {
   e.preventDefault();
   currentProject.title = document.getElementById('form-titulo').value;
   currentProject.modalidade = document.getElementById('form-modalidade').value;
@@ -449,7 +400,7 @@ window.saveProjectForm = function(e) {
   currentProject.collaborators = document.getElementById('form-colaboradores').value;
   currentProject.resumo = document.getElementById('form-resumo').value;
 
-  db.saveOrUpdateProject(currentProject);
+  await db.saveOrUpdateProject(currentProject);
   renderAlunoView();
   closeModal('modal-edit-project');
 };
@@ -476,7 +427,7 @@ window.openEditStepModal = function(stepId) {
   openModal('modal-cronograma-step');
 };
 
-window.saveCronogramaStep = function(e) {
+window.saveCronogramaStep = async function(e) {
   e.preventDefault();
   const stepId = document.getElementById('step-id-hidden').value;
   const atividade = document.getElementById('step-nome').value;
@@ -496,15 +447,15 @@ window.saveCronogramaStep = function(e) {
     currentProject.cronograma.push({ id: Date.now(), atividade, mesInicio, mesFim, status });
   }
 
-  db.saveOrUpdateProject(currentProject);
+  await db.saveOrUpdateProject(currentProject);
   renderAlunoView();
   closeModal('modal-cronograma-step');
 };
 
-window.deleteStep = function(stepId) {
+window.deleteStep = async function(stepId) {
   if (!confirm('Deseja remover esta etapa do cronograma?')) return;
   currentProject.cronograma = currentProject.cronograma.filter(s => s.id !== stepId);
-  db.saveOrUpdateProject(currentProject);
+  await db.saveOrUpdateProject(currentProject);
   renderAlunoView();
 };
 
@@ -512,8 +463,8 @@ window.deleteStep = function(stepId) {
    VISÃO DO ORIENTADOR (ADMIN)
    ========================================================================== */
 
-function renderAdminView() {
-  allProjects = db.getProjects(); // Sempre busca do DB atualizado
+async function renderAdminView() {
+  allProjects = await db.getProjects();
   updateAdminStats();
   filterAdminProjects();
 }
@@ -639,10 +590,10 @@ function renderAdminProjectsGrid(projects) {
   });
 }
 
-window.deleteStudentProject = function(email) {
+window.deleteStudentProject = async function(email) {
   if (!confirm(`Deseja realmente excluir a conta e o projeto do aluno (${email})?`)) return;
-  db.removeUserByEmail(email);
-  renderAdminView();
+  await db.removeUserByEmail(email);
+  await renderAdminView();
   alert(`Aluno (${email}) removido do sistema com sucesso!`);
 };
 
@@ -663,7 +614,6 @@ window.openAdminProjectDetailModal = function(projectId) {
   document.getElementById('admin-modal-resumo').textContent = p.resumo;
   document.getElementById('admin-modal-colaboradores').textContent = p.collaborators || 'Nenhum colaborador registrado.';
 
-  // Cronograma Table
   const completed = p.cronograma ? p.cronograma.filter(s => s.status === 'Concluído').length : 0;
   const progressPercent = p.cronograma && p.cronograma.length > 0 ? Math.round((completed / p.cronograma.length) * 100) : 0;
   document.getElementById('admin-modal-progress-badge').textContent = `Progresso: ${progressPercent}%`;
@@ -680,7 +630,6 @@ window.openAdminProjectDetailModal = function(projectId) {
     tbody.appendChild(tr);
   });
 
-  // Relatórios
   renderAdminReportEvalCard('parcial', p);
   renderAdminReportEvalCard('final', p);
 
@@ -721,7 +670,7 @@ function renderAdminReportEvalCard(type, proj) {
   document.getElementById(`admin-parecer-${type}`).value = rep.feedback || '';
 }
 
-window.evaluateReport = function(type, newStatus) {
+window.evaluateReport = async function(type, newStatus) {
   if (!activeSelectedAdminProjectId) return;
   const p = allProjects.find(proj => proj.id === activeSelectedAdminProjectId);
   if (!p) return;
@@ -733,11 +682,11 @@ window.evaluateReport = function(type, newStatus) {
   p.relatorios[type].status = newStatus;
   p.relatorios[type].feedback = feedbackText;
 
-  db.saveOrUpdateProject(p);
-  allProjects = db.getProjects();
+  await db.saveOrUpdateProject(p);
+  allProjects = await db.getProjects();
   
   openAdminProjectDetailModal(activeSelectedAdminProjectId);
-  renderAdminView();
+  await renderAdminView();
 
   alert(`Relatório ${type === 'parcial' ? 'Parcial' : 'Final'} alterado para "${newStatus}"!`);
 };
