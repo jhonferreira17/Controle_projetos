@@ -120,20 +120,8 @@
         </div>
       </div>
 
-      <!-- Control Panel & Role Switcher -->
+      <!-- User Profile & Logout Header -->
       <div class="header-controls">
-        <div class="role-switcher-container" id="role-switcher-wrapper">
-          <span class="role-label"><i class="fa-solid fa-user-gear"></i> Modo:</span>
-          <div class="role-switcher">
-            <button id="btn-role-aluno" class="role-btn active" onclick="switchRole('aluno')">
-              <i class="fa-solid fa-graduation-cap"></i> Aluno
-            </button>
-            <button id="btn-role-admin" class="role-btn" onclick="switchRole('admin')">
-              <i class="fa-solid fa-user-shield"></i> Orientador (Admin)
-            </button>
-          </div>
-        </div>
-
         <div class="user-pill" id="user-pill-info">
           <img src="" alt="Avatar" id="user-avatar" class="user-avatar">
           <div class="user-details">
@@ -153,7 +141,7 @@
     <!-- ========================================== -->
     <!-- VISÃO DO ALUNO                             -->
     <!-- ========================================== -->
-    <section id="view-aluno" class="view-section active">
+    <section id="view-aluno" class="view-section">
       <div class="welcome-banner glass-card">
         <div class="banner-info">
           <h2><i class="fa-solid fa-rocket"></i> Espaço do Pesquisador</h2>
@@ -612,7 +600,7 @@
       <div class="modal-header">
         <div>
           <span class="badge badge-modalidade" id="admin-modal-modalidade">PIBIC</span>
-          <h3 id="admin-modal-student-name">Projeto de Lucas Ferreira</h3>
+          <h3 id="admin-modal-student-name">Projeto do Aluno</h3>
         </div>
         <button class="modal-close" onclick="closeModal('modal-admin-project-detail')">&times;</button>
       </div>
@@ -621,7 +609,7 @@
         <div class="admin-detail-header-info">
           <h4 id="admin-modal-project-title">Título do Projeto</h4>
           <div class="detail-tags-row">
-            <span class="badge" id="admin-modal-cota">Bolsista CNPq</span>
+            <span class="badge" id="admin-modal-cota">Bolsista</span>
             <a href="#" target="_blank" id="admin-modal-lattes-btn" class="btn btn-xs btn-outline">
               <i class="fa-solid fa-id-card"></i> Abrir Lattes do Aluno
             </a>

@@ -1,6 +1,6 @@
 /* ==========================================================================
    LABPROJ - CAMADA DE BANCO DE DADOS & PERSISTÊNCIA (DB.JS)
-   Suporte para WebStorage / IndexedDB e integração simples com Supabase/Postgres
+   Garantia de integridade e sincronização automática entre Alunos e Projetos
    ========================================================================== */
 
 const DB_KEYS = {
@@ -65,7 +65,7 @@ const INITIAL_PROJECTS = [
         status: 'Aprovado',
         link: 'https://drive.google.com/file/d/sample-relatorio-parcial-lucas/view',
         fileName: 'Relatorio_Parcial_Lucas_Ferreira.pdf',
-        fileData: '', // Armazena Base64 se enviado via arquivo
+        fileData: '',
         fileType: 'application/pdf',
         feedback: 'Excelente progresso. A fundamentação teórica e a organização da base de dados foram muito bem executadas.',
         dataEntrega: '12/03/2026'
@@ -137,7 +137,6 @@ class LabDB {
     }
   }
 
-  // USUÁRIOS
   getUsers() {
     return JSON.parse(localStorage.getItem(DB_KEYS.USERS) || '[]');
   }
@@ -153,7 +152,6 @@ class LabDB {
     return users.find(u => u.email.toLowerCase() === email.toLowerCase());
   }
 
-  // SESSÃO
   getSession() {
     const sessionStr = localStorage.getItem(DB_KEYS.SESSION);
     return sessionStr ? JSON.parse(sessionStr) : null;
@@ -167,23 +165,62 @@ class LabDB {
     localStorage.removeItem(DB_KEYS.SESSION);
   }
 
-  // PROJETOS
+  // PROJETOS (Com auto-sincronização de todos os alunos cadastrados)
   getProjects() {
-    return JSON.parse(localStorage.getItem(DB_KEYS.PROJECTS) || '[]');
+    const projects = JSON.parse(localStorage.getItem(DB_KEYS.PROJECTS) || '[]');
+    const users = this.getUsers();
+
+    let updated = false;
+
+    // Garante que todo usuário com perfil 'aluno' tenha seu projeto no banco
+    users.filter(u => u.role === 'aluno').forEach(student => {
+      const hasProj = projects.some(p => p.studentId === student.id || (p.studentEmail && p.studentEmail.toLowerCase() === student.email.toLowerCase()));
+      if (!hasProj) {
+        const newProj = {
+          id: Date.now() + Math.floor(Math.random() * 1000),
+          studentId: student.id,
+          studentName: student.name,
+          studentEmail: student.email,
+          studentAvatar: student.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+          title: `Projeto de Pesquisa - ${student.name}`,
+          modalidade: 'PIBIC',
+          cota: 'bolsista',
+          agencia: 'CNPq',
+          lattesUrl: student.lattesUrl || 'http://lattes.cnpq.br/',
+          collaborators: '',
+          resumo: 'Resumo da pesquisa pendente de preenchimento pelo aluno.',
+          cronograma: [
+            { id: Date.now() + 1, atividade: 'Revisão Bibliográfica e Estado da Arte', mesInicio: 'Mês 1', mesFim: 'Mês 2', status: 'Pendente' }
+          ],
+          relatorios: {
+            parcial: { status: 'Não Enviado', link: '', fileName: '', fileData: '', fileType: '', feedback: '', dataEntrega: '' },
+            final: { status: 'Não Enviado', link: '', fileName: '', fileData: '', fileType: '', feedback: '', dataEntrega: '' }
+          }
+        };
+        projects.push(newProj);
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      localStorage.setItem(DB_KEYS.PROJECTS, JSON.stringify(projects));
+    }
+
+    return projects;
   }
 
   saveProjects(projects) {
     localStorage.setItem(DB_KEYS.PROJECTS, JSON.stringify(projects));
   }
 
-  getProjectByStudentId(studentId) {
+  getProjectByStudentId(studentId, studentEmail = null) {
     const projects = this.getProjects();
-    return projects.find(p => p.studentId === studentId);
+    return projects.find(p => p.studentId === studentId || (studentEmail && p.studentEmail && p.studentEmail.toLowerCase() === studentEmail.toLowerCase()));
   }
 
   saveOrUpdateProject(project) {
     const projects = this.getProjects();
-    const index = projects.findIndex(p => p.id === project.id);
+    const index = projects.findIndex(p => p.id === project.id || p.studentId === project.studentId);
     if (index !== -1) {
       projects[index] = project;
     } else {

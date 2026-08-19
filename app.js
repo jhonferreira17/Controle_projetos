@@ -1,24 +1,24 @@
 /* ==========================================================================
-   LABPROJ - LÓGICA COMPLETA DA APLICAÇÃO (SPA)
-   Autenticação, Upload PDF/Word, Banco de Dados e Orientador Admin
+   LABPROJ - LÓGICA DA APLICAÇÃO (SPA)
+   Autenticação, Gestão de Perfis, Sincronização DB & Relatórios PDF/Word
    ========================================================================== */
 
 import { db } from './db.js';
 
-// Application State
+// App State
 let currentUser = null;
 let currentProject = null;
 let allProjects = [];
 let activeSelectedAdminProjectId = null;
 let tempSelectedFile = null;
 
-// Initialize Application
+// Inicialização
 document.addEventListener('DOMContentLoaded', () => {
   checkSession();
 });
 
 /* ==========================================================================
-   AUTENTICAÇÃO & SESSÃO DE USUÁRIO
+   AUTENTICAÇÃO & CONTROLE DE SESSÃO
    ========================================================================== */
 
 function checkSession() {
@@ -102,7 +102,7 @@ window.handleRegister = function(e) {
 
   db.saveUser(newUser);
 
-  // Se for aluno, cria um projeto inicial para ele
+  // Se for aluno, registra o projeto no banco imediatamente
   if (role === 'aluno') {
     const newProj = {
       id: Date.now(),
@@ -110,15 +110,15 @@ window.handleRegister = function(e) {
       studentName: newUser.name,
       studentEmail: newUser.email,
       studentAvatar: newUser.avatar,
-      title: `Projeto de Iniciação Científica - ${newUser.name}`,
+      title: `Projeto de Pesquisa - ${newUser.name}`,
       modalidade: 'PIBIC',
       cota: 'bolsista',
       agencia: 'CNPq',
       lattesUrl: newUser.lattesUrl,
       collaborators: '',
-      resumo: 'Preencha o resumo da sua proposta de pesquisa clicando em "Editar Dados do Projeto".',
+      resumo: 'Resumo da pesquisa pendente de preenchimento pelo aluno.',
       cronograma: [
-        { id: Date.now() + 1, atividade: 'Revisão Bibliográfica', mesInicio: 'Mês 1', mesFim: 'Mês 2', status: 'Pendente' }
+        { id: Date.now() + 1, atividade: 'Revisão Bibliográfica e Estado da Arte', mesInicio: 'Mês 1', mesFim: 'Mês 2', status: 'Pendente' }
       ],
       relatorios: {
         parcial: { status: 'Não Enviado', link: '', fileName: '', fileData: '', fileType: '', feedback: '', dataEntrega: '' },
@@ -130,7 +130,7 @@ window.handleRegister = function(e) {
 
   db.setSession(newUser);
   checkSession();
-  alert('Conta criada com sucesso! Seja bem-vindo ao LabProj.');
+  alert('Conta criada com sucesso!');
 };
 
 window.handleLogout = function() {
@@ -142,67 +142,42 @@ window.handleLogout = function() {
 
 window.toggleRegFields = function() {
   const role = document.getElementById('reg-role').value;
-  const groupLattes = document.getElementById('reg-group-lattes');
-  groupLattes.style.display = role === 'aluno' ? 'flex' : 'none';
+  document.getElementById('reg-group-lattes').style.display = role === 'aluno' ? 'flex' : 'none';
 };
 
 /* ==========================================================================
-   CARREGAMENTO DE DADOS & NAVEGAÇÃO
+   CARREGAMENTO DE DADOS & SEPARAÇÃO DE PERFIS
    ========================================================================== */
 
 function loadUserDataAndProjects() {
   allProjects = db.getProjects();
 
-  // Header User Info
+  // Atualiza identificação do usuário logado
   document.getElementById('user-name').textContent = currentUser.name;
-  document.getElementById('user-role-badge').textContent = currentUser.role === 'admin' ? 'Orientador (Admin)' : 'Aluno Pesquisador';
+  document.getElementById('user-role-badge').textContent = currentUser.role === 'admin' ? 'Orientador Principal (Admin)' : 'Aluno Pesquisador';
   document.getElementById('user-avatar').src = currentUser.avatar;
 
-  // Mostra/Oculta controle de visão conforme o tipo de conta
-  const roleSwitcherWrapper = document.getElementById('role-switcher-wrapper');
-
-  if (currentUser.role === 'admin') {
-    roleSwitcherWrapper.style.display = 'flex';
-    switchRole('admin');
-  } else {
-    roleSwitcherWrapper.style.display = 'none';
-    currentProject = db.getProjectByStudentId(currentUser.id) || allProjects[0];
-    switchRole('aluno');
-  }
-}
-
-window.switchRole = function(role) {
-  const btnAluno = document.getElementById('btn-role-aluno');
-  const btnAdmin = document.getElementById('btn-role-admin');
   const viewAluno = document.getElementById('view-aluno');
   const viewAdmin = document.getElementById('view-admin');
 
-  if (role === 'aluno') {
-    if (btnAluno) btnAluno.classList.add('active');
-    if (btnAdmin) btnAdmin.classList.remove('active');
-    viewAluno.classList.add('active');
-    viewAdmin.classList.remove('active');
-
-    // Se for admin vendo a visão do aluno, pega o projeto do primeiro aluno
-    if (currentUser.role === 'admin') {
-      currentProject = allProjects[0];
-    } else {
-      currentProject = db.getProjectByStudentId(currentUser.id) || allProjects[0];
-    }
-
-    renderAlunoView();
-  } else {
-    if (btnAdmin) btnAdmin.classList.add('active');
-    if (btnAluno) btnAluno.classList.remove('active');
+  if (currentUser.role === 'admin') {
+    // VISÃO EXCLUSIVA DO ORIENTADOR (ADMIN)
     viewAdmin.classList.add('active');
     viewAluno.classList.remove('active');
 
     renderAdminView();
+  } else {
+    // VISÃO EXCLUSIVA DO ALUNO
+    viewAluno.classList.add('active');
+    viewAdmin.classList.remove('active');
+
+    currentProject = db.getProjectByStudentId(currentUser.id, currentUser.email) || allProjects[0];
+    renderAlunoView();
   }
-};
+}
 
 /* ==========================================================================
-   VISÃO DO ALUNO & GESTÃO DE PROJETO
+   VISÃO DO ALUNO & GESTÃO DO PROJETO
    ========================================================================== */
 
 function renderAlunoView() {
@@ -261,13 +236,13 @@ function renderAlunoReportBox(type) {
     linkBtn.style.display = 'none';
   }
 
-  // Arquivo Físico Anexado (PDF ou Word)
+  // Arquivo Físico Anexado (PDF / Word)
   if (rep.fileName || rep.fileData) {
     filePill.style.display = 'flex';
     document.getElementById(`aluno-file-name-${type}`).textContent = rep.fileName || 'Relatorio_Anexado';
 
     const iconEl = document.getElementById(`aluno-file-icon-${type}`);
-    if (rep.fileName && rep.fileName.toLowerCase().endsWith('.doc') || rep.fileName.toLowerCase().endsWith('.docx')) {
+    if (rep.fileName && (rep.fileName.toLowerCase().endsWith('.doc') || rep.fileName.toLowerCase().endsWith('.docx'))) {
       iconEl.className = 'fa-solid fa-file-word file-icon';
     } else {
       iconEl.className = 'fa-solid fa-file-pdf file-icon';
@@ -331,7 +306,7 @@ function getStepBadgeClass(status) {
 }
 
 /* ==========================================================================
-   SUBMISSÃO DE RELATÓRIOS (PDF & WORD & LINK)
+   SUBMISSÃO DE RELATÓRIOS (PDF / WORD / LINK)
    ========================================================================== */
 
 window.openSubmitReportModal = function(type) {
@@ -349,16 +324,8 @@ window.openSubmitReportModal = function(type) {
 
 window.toggleUploadMethod = function() {
   const method = document.querySelector('input[name="uploadMethod"]:checked').value;
-  const groupFile = document.getElementById('group-upload-file');
-  const groupLink = document.getElementById('group-upload-link');
-
-  if (method === 'file') {
-    groupFile.style.display = 'block';
-    groupLink.style.display = 'none';
-  } else {
-    groupFile.style.display = 'none';
-    groupLink.style.display = 'block';
-  }
+  document.getElementById('group-upload-file').style.display = method === 'file' ? 'block' : 'none';
+  document.getElementById('group-upload-link').style.display = method === 'link' ? 'block' : 'none';
 };
 
 window.handleFileSelect = function(e) {
@@ -413,7 +380,7 @@ window.saveReportSubmission = function(e) {
       reader.onload = function(evt) {
         rep.fileName = tempSelectedFile.name;
         rep.fileType = tempSelectedFile.type;
-        rep.fileData = evt.target.result; // Base64 Data URL
+        rep.fileData = evt.target.result;
         finishReportSave(type);
       };
       reader.readAsDataURL(tempSelectedFile);
@@ -546,7 +513,7 @@ window.deleteStep = function(stepId) {
    ========================================================================== */
 
 function renderAdminView() {
-  allProjects = db.getProjects();
+  allProjects = db.getProjects(); // Sempre busca do DB atualizado
   updateAdminStats();
   filterAdminProjects();
 }
@@ -571,10 +538,15 @@ function updateAdminStats() {
 }
 
 window.filterAdminProjects = function() {
-  const searchText = document.getElementById('search-input').value.toLowerCase();
-  const modalidadeFilter = document.getElementById('filter-modalidade').value;
-  const cotaFilter = document.getElementById('filter-cota').value;
-  const relatorioFilter = document.getElementById('filter-relatorio').value;
+  const searchInput = document.getElementById('search-input');
+  const modalidadeSelect = document.getElementById('filter-modalidade');
+  const cotaSelect = document.getElementById('filter-cota');
+  const relatorioSelect = document.getElementById('filter-relatorio');
+
+  const searchText = searchInput ? searchInput.value.toLowerCase() : '';
+  const modalidadeFilter = modalidadeSelect ? modalidadeSelect.value : 'todos';
+  const cotaFilter = cotaSelect ? cotaSelect.value : 'todos';
+  const relatorioFilter = relatorioSelect ? relatorioSelect.value : 'todos';
 
   const filtered = allProjects.filter(p => {
     const matchesSearch = p.studentName.toLowerCase().includes(searchText) || 
@@ -611,8 +583,8 @@ function renderAdminProjectsGrid(projects) {
   }
 
   projects.forEach(p => {
-    const completed = p.cronograma.filter(s => s.status === 'Concluído').length;
-    const progressPercent = p.cronograma.length > 0 ? Math.round((completed / p.cronograma.length) * 100) : 0;
+    const completed = p.cronograma ? p.cronograma.filter(s => s.status === 'Concluído').length : 0;
+    const progressPercent = p.cronograma && p.cronograma.length > 0 ? Math.round((completed / p.cronograma.length) * 100) : 0;
 
     const card = document.createElement('div');
     card.className = 'glass-card admin-project-card';
@@ -631,7 +603,7 @@ function renderAdminProjectsGrid(projects) {
         <div style="margin-bottom: 0.5rem; display:flex; gap:6px;">
           <span class="badge badge-modalidade">${p.modalidade}</span>
           <span class="${p.cota === 'bolsista' ? 'badge badge-bolsista' : 'badge badge-voluntario'}">
-            ${p.cota === 'bolsista' ? `Bolsista (${p.agencia})` : 'Voluntário'}
+            ${p.cota === 'bolsista' ? `Bolsista (${p.agencia || 'CNPq'})` : 'Voluntário'}
           </span>
         </div>
         <h5>${p.title}</h5>
@@ -674,7 +646,7 @@ window.openAdminProjectDetailModal = function(projectId) {
   document.getElementById('admin-modal-modalidade').textContent = p.modalidade;
   
   const cotaBadge = document.getElementById('admin-modal-cota');
-  cotaBadge.textContent = p.cota === 'bolsista' ? `Bolsista (${p.agencia})` : 'Voluntário';
+  cotaBadge.textContent = p.cota === 'bolsista' ? `Bolsista (${p.agencia || 'CNPq'})` : 'Voluntário';
   cotaBadge.className = p.cota === 'bolsista' ? 'badge badge-bolsista' : 'badge badge-voluntario';
 
   document.getElementById('admin-modal-lattes-btn').href = p.lattesUrl || '#';
@@ -682,13 +654,13 @@ window.openAdminProjectDetailModal = function(projectId) {
   document.getElementById('admin-modal-colaboradores').textContent = p.collaborators || 'Nenhum colaborador registrado.';
 
   // Cronograma Table
-  const completed = p.cronograma.filter(s => s.status === 'Concluído').length;
-  const progressPercent = p.cronograma.length > 0 ? Math.round((completed / p.cronograma.length) * 100) : 0;
+  const completed = p.cronograma ? p.cronograma.filter(s => s.status === 'Concluído').length : 0;
+  const progressPercent = p.cronograma && p.cronograma.length > 0 ? Math.round((completed / p.cronograma.length) * 100) : 0;
   document.getElementById('admin-modal-progress-badge').textContent = `Progresso: ${progressPercent}%`;
 
   const tbody = document.getElementById('admin-modal-tbody-cronograma');
   tbody.innerHTML = '';
-  p.cronograma.forEach(step => {
+  (p.cronograma || []).forEach(step => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><strong>${step.atividade}</strong></td>
@@ -698,7 +670,7 @@ window.openAdminProjectDetailModal = function(projectId) {
     tbody.appendChild(tr);
   });
 
-  // Relatório Parcial Admin File / Link
+  // Relatórios
   renderAdminReportEvalCard('parcial', p);
   renderAdminReportEvalCard('final', p);
 
@@ -761,7 +733,7 @@ window.evaluateReport = function(type, newStatus) {
 };
 
 /* ==========================================================================
-   MODAL UTILITIES
+   MODAIS UTILS
    ========================================================================== */
 
 function openModal(id) {
