@@ -149,10 +149,8 @@ function renderAlunoView() {
   const lattesLink = document.getElementById('aluno-proj-lattes');
   lattesLink.href = currentProject.lattesUrl || '#';
 
-  document.getElementById('aluno-proj-colaboradores').textContent = 
-    currentProject.collaborators && currentProject.collaborators.trim() !== '' 
-      ? currentProject.collaborators 
-      : 'Nenhum colaborador registrado.';
+  const colabContainer = document.getElementById('aluno-proj-colaboradores');
+  colabContainer.innerHTML = renderCollaboratorsHtml(currentProject);
 
   document.getElementById('aluno-proj-resumo').textContent = currentProject.resumo;
 
@@ -369,8 +367,10 @@ window.downloadOrViewFile = function(type, projectId = null) {
 };
 
 /* ==========================================================================
-   EDITAR PROJETO & CRONOGRAMA
+   EDITAR PROJETO & CRONOGRAMA & COLABORADORES
    ========================================================================== */
+
+let tempCollaboratorsList = [];
 
 window.openEditProjectModal = function() {
   document.getElementById('form-titulo').value = currentProject.title;
@@ -378,12 +378,79 @@ window.openEditProjectModal = function() {
   document.getElementById('form-cota-tipo').value = currentProject.cota;
   document.getElementById('form-agencia').value = currentProject.agencia || '';
   document.getElementById('form-lattes').value = currentProject.lattesUrl || '';
-  document.getElementById('form-colaboradores').value = currentProject.collaborators || '';
   document.getElementById('form-resumo').value = currentProject.resumo || '';
+
+  tempCollaboratorsList = currentProject.collaboratorsList ? [...currentProject.collaboratorsList] : [];
+  renderTempCollaborators();
 
   toggleFormAgencia();
   openModal('modal-edit-project');
 };
+
+window.addCollaboratorToTempList = function() {
+  const nameInput = document.getElementById('colab-name-input');
+  const lattesInput = document.getElementById('colab-lattes-input');
+  const name = nameInput.value.trim();
+  const lattesUrl = lattesInput.value.trim();
+
+  if (!name) {
+    alert('Informe pelo menos o nome do colaborador.');
+    return;
+  }
+
+  tempCollaboratorsList.push({
+    id: Date.now(),
+    name,
+    lattesUrl
+  });
+
+  nameInput.value = '';
+  lattesInput.value = '';
+  renderTempCollaborators();
+};
+
+window.removeCollaboratorFromTempList = function(id) {
+  tempCollaboratorsList = tempCollaboratorsList.filter(c => c.id !== id);
+  renderTempCollaborators();
+};
+
+function renderTempCollaborators() {
+  const container = document.getElementById('temp-collaborators-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (tempCollaboratorsList.length === 0) {
+    container.innerHTML = `<span style="font-size:0.8rem; color:var(--text-muted);">Nenhum colaborador adicionado ainda.</span>`;
+    return;
+  }
+
+  tempCollaboratorsList.forEach(colab => {
+    const pill = document.createElement('div');
+    pill.className = 'collaborator-pill';
+    pill.innerHTML = `
+      <span><i class="fa-solid fa-user-tag"></i> ${colab.name}</span>
+      ${colab.lattesUrl ? `<a href="${colab.lattesUrl}" target="_blank" class="colab-lattes-link"><i class="fa-solid fa-id-card"></i> Lattes</a>` : ''}
+      <button type="button" class="btn-remove-colab" onclick="removeCollaboratorFromTempList(${colab.id})">&times;</button>
+    `;
+    container.appendChild(pill);
+  });
+}
+
+function renderCollaboratorsHtml(project) {
+  const list = project.collaboratorsList || [];
+  if (list.length > 0) {
+    return list.map(c => `
+      <div class="collaborator-pill" style="margin-right: 6px; margin-bottom: 6px;">
+        <span><i class="fa-solid fa-user-check"></i> ${c.name}</span>
+        ${c.lattesUrl ? `<a href="${c.lattesUrl}" target="_blank" class="colab-lattes-link"><i class="fa-solid fa-id-card"></i> Lattes</a>` : ''}
+      </div>
+    `).join('');
+  }
+  if (project.collaborators && project.collaborators.trim() !== '') {
+    return project.collaborators;
+  }
+  return '<span style="color:var(--text-muted);">Nenhum colaborador registrado.</span>';
+}
 
 window.toggleFormAgencia = function() {
   const cotaVal = document.getElementById('form-cota-tipo').value;
@@ -397,8 +464,10 @@ window.saveProjectForm = async function(e) {
   currentProject.cota = document.getElementById('form-cota-tipo').value;
   currentProject.agencia = currentProject.cota === 'bolsista' ? document.getElementById('form-agencia').value : 'Nenhum (Voluntário)';
   currentProject.lattesUrl = document.getElementById('form-lattes').value;
-  currentProject.collaborators = document.getElementById('form-colaboradores').value;
   currentProject.resumo = document.getElementById('form-resumo').value;
+
+  currentProject.collaboratorsList = tempCollaboratorsList;
+  currentProject.collaborators = tempCollaboratorsList.map(c => c.name).join(', ');
 
   await db.saveOrUpdateProject(currentProject);
   renderAlunoView();
@@ -610,9 +679,8 @@ window.openAdminProjectDetailModal = function(projectId) {
   cotaBadge.textContent = p.cota === 'bolsista' ? `Bolsista (${p.agencia || 'CNPq'})` : 'Voluntário';
   cotaBadge.className = p.cota === 'bolsista' ? 'badge badge-bolsista' : 'badge badge-voluntario';
 
-  document.getElementById('admin-modal-lattes-btn').href = p.lattesUrl || '#';
-  document.getElementById('admin-modal-resumo').textContent = p.resumo;
-  document.getElementById('admin-modal-colaboradores').textContent = p.collaborators || 'Nenhum colaborador registrado.';
+  const colabContainer = document.getElementById('admin-modal-colaboradores');
+  colabContainer.innerHTML = renderCollaboratorsHtml(p);
 
   const completed = p.cronograma ? p.cronograma.filter(s => s.status === 'Concluído').length : 0;
   const progressPercent = p.cronograma && p.cronograma.length > 0 ? Math.round((completed / p.cronograma.length) * 100) : 0;

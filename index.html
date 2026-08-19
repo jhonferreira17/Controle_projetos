@@ -442,9 +442,19 @@
             <input type="url" id="form-lattes" required placeholder="http://lattes.cnpq.br/1234567890123456">
           </div>
 
+          <!-- Gerenciador de Colaboradores e Lattes -->
           <div class="form-group">
-            <label for="form-colaboradores">Possui Colaboradores no Projeto?</label>
-            <input type="text" id="form-colaboradores" placeholder="Informe nomes de co-orientadores ou pesquisadores parceiros.">
+            <label><i class="fa-solid fa-user-group"></i> Colaboradores do Projeto & Currículos Lattes</label>
+            <div class="collaborator-input-row">
+              <input type="text" id="colab-name-input" placeholder="Nome (ex: Dr. Roberto Silva)">
+              <input type="url" id="colab-lattes-input" placeholder="Link Lattes (http://lattes.cnpq.br/...)">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addCollaboratorToTempList()">
+                <i class="fa-solid fa-plus"></i> Adicionar
+              </button>
+            </div>
+            <div id="temp-collaborators-list" class="collaborators-temp-container">
+              <!-- Renderizado dinamicamente pelo JS -->
+            </div>
           </div>
 
           <div class="form-group">

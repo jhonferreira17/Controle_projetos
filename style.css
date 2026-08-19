@@ -1379,3 +1379,63 @@ input:focus, select:focus, textarea:focus {
 .eval-footer {
   margin-top: 0.8rem;
 }
+
+/* GERENCIADOR DE COLABORADORES & LATTES */
+.collaborator-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+@media (max-width: 600px) {
+  .collaborator-input-row {
+    flex-direction: column;
+  }
+}
+
+.collaborators-temp-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.collaborator-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+.colab-lattes-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(14, 215, 181, 0.15);
+  color: var(--accent-cyan);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid rgba(14, 215, 181, 0.3);
+}
+
+.colab-lattes-link:hover {
+  background: var(--accent-cyan);
+  color: #0b0f19;
+}
+
+.btn-remove-colab {
+  background: transparent;
+  border: none;
+  color: var(--accent-rose);
+  font-size: 1rem;
+  cursor: pointer;
+  margin-left: 4px;
+  line-height: 1;
+}

@@ -40,6 +40,10 @@
       "agencia": "CNPq",
       "lattesUrl": "http://lattes.cnpq.br/1234567890123456",
       "collaborators": "Dr. Roberto Silva (Co-orientador), Mariane Costa (Mestranda)",
+      "collaboratorsList": [
+        { "id": 1, "name": "Dr. Roberto Silva (Co-orientador)", "lattesUrl": "http://lattes.cnpq.br/1111222233334444" },
+        { "id": 2, "name": "Mariane Costa (Mestranda)", "lattesUrl": "http://lattes.cnpq.br/5555666677778888" }
+      ],
       "resumo": "Este projeto investiga a aplicação de redes neurais convolucionais (CNNs) para segmentação e classificação automática de lesões em exames dermatológicos. O objetivo é criar um pipeline computacional de alto desempenho capaz de auxiliar no diagnóstico precoce de melanomas com precisão superior a 95%.",
       "cronograma": [
         { "id": 101, "atividade": "Revisão Bibliográfica e Estado da Arte em CNNs", "mesInicio": "Mês 1", "mesFim": "Mês 2", "status": "Concluído" },
@@ -80,6 +84,9 @@
       "agencia": "FAPESP",
       "lattesUrl": "http://lattes.cnpq.br/9876543210987654",
       "collaborators": "Prof. Dr. Ricardo Mendonça",
+      "collaboratorsList": [
+        { "id": 1, "name": "Prof. Dr. Ricardo Mendonça", "lattesUrl": "http://lattes.cnpq.br/9999888877776666" }
+      ],
       "resumo": "Desenvolvimento de um protótipo físico e firmware integrado para sensoriamento contínuo de gases e material particulado (PM2.5). O sistema envia dados via MQTT para um dashboard web em tempo real com alertas de segurança automáticos.",
       "cronograma": [
         { "id": 201, "atividade": "Modelagem do Circuito e Seleção de Sensores", "mesInicio": "Mês 1", "mesFim": "Mês 3", "status": "Concluído" },
